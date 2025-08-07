@@ -58,8 +58,8 @@ function mysqli_ps_update($connect, $sql, $fields) {
     $fieldlist = '';
 
     ksort($fields);
-    preg_match_all('/\|\|(.+?)\|\|/Ui', $sql, $wheres);
-    $sql = preg_replace('/\|\|.+?\|\|/Ui', '?', $sql);
+    preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
+    $sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
 
     foreach ($fields as $key => $value) {
         $values[] = $value;
@@ -96,8 +96,8 @@ function mysqli_ps_select($connect, $sql) {
     $types = '';
     $values = [];
 
-    preg_match_all('/\|\|(.+?)\|\|/Ui', $sql, $wheres);
-    $sql = preg_replace('/\|\|.+?\|\|/Ui', '?', $sql);
+    preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
+    $sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
 
     foreach ($wheres[1] as $value) {
         $values[] = $value;
