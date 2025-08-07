@@ -1,5 +1,8 @@
 # MySQL-PHP-PreparedStatements
-Three quick and dirty procedural functions to make and execute Prepared Statements for MySQL/MariaDB with PHP
+
+Creating prepared statements is a pain in the proverbial - so I created three quick and dirty procedural functions to make and execute Prepared Statements for MySQL/MariaDB with PHP.
+
+These were created for a specific project where I have complete control of the queries needed - so may not be suitable for all use-cases.
 
 ## mysqli_ps_insert();
 ```
