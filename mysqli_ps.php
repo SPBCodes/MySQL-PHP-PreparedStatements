@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Prepared statement for INSERT with optional ON DUPLICATE KEY UPDATE.
- * SQL template must contain #fields# and optionally #dupes#.
+ * Prepared INSERT with optional ON DUPLICATE KEY UPDATE.
+ * SQL must include #fields# and optionally #dupes#.
  */
 function mysqli_ps_insert($connect, $sql, $fields, $ondup = null) {
     $types = '';
@@ -38,7 +38,10 @@ function mysqli_ps_insert($connect, $sql, $fields, $ondup = null) {
         $stmt = mysqli_prepare($connect, $sql);
         if (!$stmt) throw new Exception(mysqli_error($connect));
 
-        mysqli_bind_params($stmt, $types, $values);
+        if (!empty($values)) {
+            mysqli_bind_params($stmt, $types, $values);
+        }
+
         $success = mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
         return $success;
@@ -49,22 +52,27 @@ function mysqli_ps_insert($connect, $sql, $fields, $ondup = null) {
 }
 
 /**
- * Prepared statement for UPDATE.
- * SQL template must contain #fields# for the SET part and ||value|| markers for WHERE clauses.
+ * Prepared UPDATE statement.
+ * SQL to include #fields# (optional) and ||value|| placeholders for WHERE conditions.
  */
-function mysqli_ps_update($connect, $sql, $fields) {
+function mysqli_ps_update($connect, $sql, $fields = []) {
     $types = '';
     $values = [];
     $fieldlist = '';
 
-    ksort($fields);
     preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
     $sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
 
-    foreach ($fields as $key => $value) {
-        $values[] = $value;
-        $types .= mysqli_determine_type($value);
-        $fieldlist .= "`$key`=?,";
+    if (!empty($fields)) {
+        ksort($fields);
+        foreach ($fields as $key => $value) {
+            $values[] = $value;
+            $types .= mysqli_determine_type($value);
+            $fieldlist .= "`$key`=?,";
+        }
+        $sql = str_replace("#fields#", rtrim($fieldlist, ","), $sql);
+    } else {
+        $sql = str_replace("#fields#", '', $sql);
     }
 
     foreach ($wheres[1] as $value) {
@@ -72,13 +80,14 @@ function mysqli_ps_update($connect, $sql, $fields) {
         $types .= mysqli_determine_type($value);
     }
 
-    $sql = str_replace("#fields#", rtrim($fieldlist, ","), $sql);
-
     try {
         $stmt = mysqli_prepare($connect, $sql);
         if (!$stmt) throw new Exception(mysqli_error($connect));
 
-        mysqli_bind_params($stmt, $types, $values);
+        if (!empty($values)) {
+            mysqli_bind_params($stmt, $types, $values);
+        }
+
         $success = mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
         return $success;
@@ -89,8 +98,7 @@ function mysqli_ps_update($connect, $sql, $fields) {
 }
 
 /**
- * Prepared statement for SELECT.
- * SQL should use ||value|| placeholders for where clause parameters.
+ * Prepared SELECT with ||value|| placeholders.
  */
 function mysqli_ps_select($connect, $sql) {
     $types = '';
@@ -108,7 +116,10 @@ function mysqli_ps_select($connect, $sql) {
         $stmt = mysqli_prepare($connect, $sql);
         if (!$stmt) throw new Exception(mysqli_error($connect));
 
-        mysqli_bind_params($stmt, $types, $values);
+        if (!empty($values)) {
+            mysqli_bind_params($stmt, $types, $values);
+        }
+
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
         mysqli_stmt_close($stmt);
@@ -118,14 +129,19 @@ function mysqli_ps_select($connect, $sql) {
         return false;
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////
+//                          🔧 Internal Helper Functions                      //
+///////////////////////////////////////////////////////////////////////////////
+
 /**
- * Determine parameter type for MySQLi bind_param.
+ * Determines the appropriate bind_param type for a given value.
  */
 function mysqli_determine_type($value) {
-    if (is_null($value)) return 's'; // You may customize this for NULL handling
+    if (is_null($value)) return 's'; // Can adjust if you want NULL handled differently
     if (is_int($value)) return 'i';
     if (is_float($value)) return 'd';
-    
+
     if (is_numeric($value)) {
         return (strpos((string)$value, '.') !== false) ? 'd' : 'i';
     }
@@ -134,7 +150,7 @@ function mysqli_determine_type($value) {
 }
 
 /**
- * Binds parameters to a prepared statement.
+ * Binds parameters to a MySQLi prepared statement.
  */
 function mysqli_bind_params($stmt, $types, $values) {
     $params = array_merge([$types], $values);
@@ -146,4 +162,5 @@ function mysqli_bind_params($stmt, $types, $values) {
 
     call_user_func_array([$stmt, 'bind_param'], $refs);
 }
+
 ?>
