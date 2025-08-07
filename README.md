@@ -29,7 +29,7 @@ $ondup["AmendedBy"]=5;
 $ondup["Name"]="" // will use the same value as specified in $fields
 $ondup["Address"]=""; // will use the same value as specified in $fields;
 
-$success=mysqli_ps_insert($connect,"insert into `table` set #fields# on duplicate key #dupes#",$fields,$ondup);
+$success=mysqli_ps_insert($connect,"insert into `table` set #fields# on duplicate key update #dupes#",$fields,$ondup);
 ```
 ## mysqli_ps_update();
 ```
@@ -50,7 +50,7 @@ e.g.
 $fields["AmendedBy"]=10;
 $fields["Name"]="Joseph Bloggs";
 $fields["Address"]="5 My Street, My Town";
-
+$oldname="Joe Bloggs"
 $success=mysqli_ps_update($connect,"update `table` set #fields# where `Name`=||" . $oldname . "||",$fields);
 ```
 
@@ -69,5 +69,6 @@ mysqli result object.
 
 e.g. 
 ```
+$id=5;
 $result=mysqli_ps_select($connect,"select `Name`,`Address` from `table`  where `ID`=||" . $id . "||");
 ```
