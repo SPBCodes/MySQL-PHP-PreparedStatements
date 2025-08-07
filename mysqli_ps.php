@@ -129,8 +129,9 @@
 		return $success;
 	}
 	
-	function mysqli_ps_select($connect,$sql,$fields)
+	function mysqli_ps_select($connect,$sql)
 	{
+		// Requires mysqlnd
 		$types="";
 		ksort($fields);
 		preg_match_all('/\|\|(.+)\|\|/Ui',$sql, $wheres);
