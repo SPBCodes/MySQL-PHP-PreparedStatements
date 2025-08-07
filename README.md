@@ -14,7 +14,8 @@ associative array of fields e.g. $fields["FIELDNAME"]="VALUE";
 ### $ondup (ARRAY)
 associative array of on duplicate key update fields e.g. $ondup["FIELDNAME"]=""; Note that if the ondup field exists in $fields then its value is ignored and it is assumed the update is the same as the value specified for fields.
 
-returns true or false;
+### returns 
+true or false;
 
 e.g. 
 ```
@@ -38,7 +39,8 @@ the $sql statement with #fields# replacing all parameterised insert fields. In t
 ### $fields (ARRAY)
 associative array of fields e.g. $fields["FIELDNAME"]="VALUE";
 
-returns true or false;
+### returns 
+true or false;
 
 e.g. 
 ```
@@ -46,7 +48,7 @@ $fields["AmendedBy"]=10;
 $fields["Name"]="Joseph Bloggs";
 $fields["Address"]="5 My Street, My Town";
 
-$success=mysqli_ps_update($connect,"update `table` set #fields# where `Name`=||Joe Bloggs||",$fields);
+$success=mysqli_ps_update($connect,"update `table` set #fields# where `Name`=||" . $oldname . "||",$fields);
 ```
 
 ## mysqli_ps_select();
@@ -58,14 +60,11 @@ the mysqli connection object
 ### $sql (STRING)
 the $sql statement. In the "WHERE" surround parameterised values in double pipe characters e.g. WHERE ID=||5|| 
 
-returns mysqli result object.
+### returns 
+mysqli result object.
 (requires mysqlnd)
 
 e.g. 
 ```
-$fields["AmendedBy"]=10;
-$fields["Name"]="Joseph Bloggs";
-$fields["Address"]="5 My Street, My Town";
-
-$$result=mysqli_ps_update($connect,"select `Name`,`Address from `table`  where `ID`=||5||";
-`/``
+$result=mysqli_ps_select($connect,"select `Name`,`Address` from `table`  where `ID`=||" . $id . "||");
+```
