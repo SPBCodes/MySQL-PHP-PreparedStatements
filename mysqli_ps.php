@@ -1,5 +1,5 @@
 <?php
-	// Copyright 2005 SPB Codes 
+	// Copyright 2025 SPB Codes 
 	// Use, modify, distribute, share however you want but ple;ase leave this notice in place
 
 	function mysqli_ps_insert($connect,$sql,$fields,$ondup)
