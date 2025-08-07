@@ -1,65 +1,71 @@
-<?php
+<?
+function mysqli_ps_insert($connect, $sql, $fields, $ondup = null)
+{
+    $fields = mysqli_convert_empty_to_null($fields);
+    $ondup = mysqli_convert_empty_to_null(is_array($ondup) ? $ondup : []);
 
-/**
- * Prepared INSERT with optional ON DUPLICATE KEY UPDATE.
- * SQL must include #fields# and optionally #dupes#.
- */
-function mysqli_ps_insert($connect, $sql, $fields, $ondup = null) {
-    $types = '';
+    $types = "";
     $values = [];
-    $fieldlist = '';
-    $duplist = '';
+    $fieldlist = "";
+    $duplist = "";
 
-    if (is_array($fields)) ksort($fields);
-    if (is_array($ondup)) ksort($ondup);
+    if (is_array($fields)) {
+        ksort($fields);
+    }
+    if (is_array($ondup)) {
+        ksort($ondup);
+    }
 
     foreach ($fields as $key => $value) {
         $values[] = $value;
         $types .= mysqli_determine_type($value);
-        $fieldlist .= "`$key`=?,";
+        $fieldlist .= "`" . $key . "`=?,";
     }
 
-    if (is_array($ondup)) {
-        foreach ($ondup as $key => $value) {
-            if (isset($fields[$key])) {
-                $duplist .= "`$key`=VALUES(`$key`),";
-            } else {
-                $values[] = $value;
-                $types .= mysqli_determine_type($value);
-                $duplist .= "`$key`=?,";
-            }
+    foreach ($ondup as $key => $value) {
+        if (array_key_exists($key, $fields)) {
+            // Use VALUES(col) if key is in fields (avoid duplicating value param)
+            $duplist .= "`" . $key . "`=VALUES(`" . $key . "`),";
+        } else {
+            // If key not in fields, add param to values and type
+            $values[] = $value;
+            $duplist .= "`" . $key . "`=?,";
+            $types .= mysqli_determine_type($value);
         }
     }
 
-    $sql = str_replace("#fields#", rtrim($fieldlist, ","), $sql);
-    $sql = str_replace("#dupes#", rtrim($duplist, ","), $sql);
+    $fieldlist = rtrim($fieldlist, ",");
+    $duplist = rtrim($duplist, ",");
 
-    try {
-        $stmt = mysqli_prepare($connect, $sql);
-        if (!$stmt) throw new Exception(mysqli_error($connect));
+    $sql = str_replace("#fields#", $fieldlist, $sql);
+    $sql = str_replace("#dupes#", $duplist, $sql);
 
-        if (!empty($values)) {
-            mysqli_bind_params($stmt, $types, $values);
-        }
-
-        $success = mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-        return $success;
-    } catch (Exception $e) {
-        error_log($e);
+    $stmt = mysqli_prepare($connect, $sql);
+    if (!$stmt) {
+        error_log("Prepare failed (insert): " . mysqli_error($connect));
         return false;
     }
+
+    if (!mysqli_bind_params($stmt, $types, $values)) {
+        error_log("Bind param failed (insert): " . mysqli_stmt_error($stmt));
+        mysqli_stmt_close($stmt);
+        return false;
+    }
+
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    return $success;
 }
 
-/**
- * Prepared UPDATE statement.
- * SQL to include #fields# (optional) and ||value|| placeholders for WHERE conditions.
- */
-function mysqli_ps_update($connect, $sql, $fields = []) {
-    $types = '';
-    $values = [];
-    $fieldlist = '';
+function mysqli_ps_update($connect, $sql, $fields)
+{
+    $fields = mysqli_convert_empty_to_null($fields);
 
+    $types = "";
+    $values = [];
+    $fieldlist = "";
+
+    // Extract WHERE values inside ||...|| and replace with ?
     preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
     $sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
 
@@ -68,99 +74,126 @@ function mysqli_ps_update($connect, $sql, $fields = []) {
         foreach ($fields as $key => $value) {
             $values[] = $value;
             $types .= mysqli_determine_type($value);
-            $fieldlist .= "`$key`=?,";
+            $fieldlist .= "`" . $key . "`=?,";
         }
-        $sql = str_replace("#fields#", rtrim($fieldlist, ","), $sql);
+        $fieldlist = rtrim($fieldlist, ",");
+        $sql = str_replace("#fields#", $fieldlist, $sql);
     } else {
-        $sql = str_replace("#fields#", '', $sql);
+        // No fields to update — just remove #fields# placeholder safely
+        $sql = str_replace("#fields#", "", $sql);
     }
 
-    foreach ($wheres[1] as $value) {
-        $values[] = $value;
-        $types .= mysqli_determine_type($value);
-    }
-
-    try {
-        $stmt = mysqli_prepare($connect, $sql);
-        if (!$stmt) throw new Exception(mysqli_error($connect));
-
-        if (!empty($values)) {
-            mysqli_bind_params($stmt, $types, $values);
+    // Add WHERE clause values to values/types
+    if (!empty($wheres[1])) {
+        foreach ($wheres[1] as $value) {
+            $values[] = $value;
+            $types .= mysqli_determine_type($value);
         }
+    }
 
-        $success = mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-        return $success;
-    } catch (Exception $e) {
-        error_log($e);
+    $stmt = mysqli_prepare($connect, $sql);
+    if (!$stmt) {
+        error_log("Prepare failed (update): " . mysqli_error($connect));
         return false;
     }
+
+    if (!mysqli_bind_params($stmt, $types, $values)) {
+        error_log("Bind param failed (update): " . mysqli_stmt_error($stmt));
+        mysqli_stmt_close($stmt);
+        return false;
+    }
+
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    return $success;
 }
 
-/**
- * Prepared SELECT with ||value|| placeholders.
- */
-function mysqli_ps_select($connect, $sql) {
-    $types = '';
+function mysqli_ps_select($connect, $sql)
+{
+    $types = "";
     $values = [];
 
+    // Extract WHERE values inside ||...|| and replace with ?
     preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
     $sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
 
-    foreach ($wheres[1] as $value) {
-        $values[] = $value;
-        $types .= mysqli_determine_type($value);
+    if (!empty($wheres[1])) {
+        foreach ($wheres[1] as $value) {
+            $values[] = $value;
+            $types .= mysqli_determine_type($value);
+        }
     }
 
-    try {
-        $stmt = mysqli_prepare($connect, $sql);
-        if (!$stmt) throw new Exception(mysqli_error($connect));
-
-        if (!empty($values)) {
-            mysqli_bind_params($stmt, $types, $values);
-        }
-
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-        mysqli_stmt_close($stmt);
-        return $result;
-    } catch (Exception $e) {
-        error_log($e);
+    $stmt = mysqli_prepare($connect, $sql);
+    if (!$stmt) {
+        error_log("Prepare failed (select): " . mysqli_error($connect));
         return false;
     }
+
+    if (!mysqli_bind_params($stmt, $types, $values)) {
+        error_log("Bind param failed (select): " . mysqli_stmt_error($stmt));
+        mysqli_stmt_close($stmt);
+        return false;
+    }
+
+    if (!mysqli_stmt_execute($stmt)) {
+        error_log("Execute failed (select): " . mysqli_stmt_error($stmt));
+        mysqli_stmt_close($stmt);
+        return false;
+    }
+
+    $result = mysqli_stmt_get_result($stmt);
+    mysqli_stmt_close($stmt);
+    return $result;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-//                          🔧 Internal Helper Functions                      //
-///////////////////////////////////////////////////////////////////////////////
+/* === Helper functions === */
 
-/**
- * Determines the appropriate bind_param type for a given value.
- */
-function mysqli_determine_type($value) {
-    if (is_null($value)) return 's'; // Can adjust if you want NULL handled differently
-    if (is_int($value)) return 'i';
-    if (is_float($value)) return 'd';
+function mysqli_convert_empty_to_null(array $array): array
+{
+    foreach ($array as $k => $v) {
+        if ($v === '' || (is_string($v) && strtolower($v) === 'null')) {
+            $array[$k] = null;
+        }
+    }
+    return $array;
+}
 
+function mysqli_determine_type($value): string
+{
+    if (is_null($value)) {
+        return 's'; // Bind NULL as string type (MySQLi accepts NULLs bound as 's')
+    }
+
+    // Accept numeric strings as numbers
     if (is_numeric($value)) {
-        return (strpos((string)$value, '.') !== false) ? 'd' : 'i';
+        if (strpos($value, '.') !== false) {
+            return 'd'; // float
+        }
+        return 'i'; // int
     }
 
-    return 's';
+    return 's'; // default string
 }
 
-/**
- * Binds parameters to a MySQLi prepared statement.
- */
-function mysqli_bind_params($stmt, $types, $values) {
-    $params = array_merge([$types], $values);
+function mysqli_bind_params(mysqli_stmt $stmt, string $types, array &$values): bool
+{
+    if ($types === '' || empty($values)) {
+        // No params to bind
+        return true;
+    }
+
     $refs = [];
-
-    foreach ($params as $k => &$v) {
-        $refs[$k] = &$v;
+    foreach ($values as $key => &$value) {
+        if (is_null($value)) {
+            $nullVar = null;
+            $refs[$key] = &$nullVar;
+        } else {
+            $refs[$key] = &$value;
+        }
     }
 
-    call_user_func_array([$stmt, 'bind_param'], $refs);
+    // Bind params with splat operator for references
+    return mysqli_stmt_bind_param($stmt, $types, ...$refs);
 }
-
 ?>
