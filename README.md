@@ -4,6 +4,8 @@ Creating prepared statements is a pain in the proverbial - so I created (with a 
 
 These were created for a specific project where I have complete control of the queries needed - so may not be suitable for all use-cases.
 
+Please note that some parameters are expected (e.g. in $fields or WHERE). If your query has no parameters use  mysqli_query() instead.
+
 ## mysqli_ps_insert();
 ```
 mysqli_ps_insert($mysqliconnection,$sql,$fields,$ondup);
