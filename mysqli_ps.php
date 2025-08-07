@@ -1,17 +1,14 @@
 <?php
-	// Copyright 2025 SPB Codes 
-	// Use, modify, distribute, share however you want but ple;ase leave this notice in place
-
-	function mysqli_ps_insert($connect,$sql,$fields,$ondup)
+	function mysqli_ps_insert($connect,$sql,$fields,$ondup=null)
 	{
 		$types="";
 		if(is_array($fields))
 		{
-		ksort($fields);
+			ksort($fields);
 		}
 		if(is_array($ondup))
 		{
-		ksort($ondup);
+			ksort($ondup);
 		}
 		foreach($fields as $key=>$value)
 		{
@@ -62,18 +59,24 @@
 		}
 		$sql = str_replace("#fields#",substr($fieldlist,0,strlen($fieldlist)-1),$sql);
 		$sql = str_replace("#dupes#",substr($duplist,0,strlen($duplist)-1),$sql);
-		
-		$stmt = mysqli_prepare($connect, $sql);
-		$params = array_merge([$types], $values);
-		$refs = [];
-		foreach ($params as $k => $v) 
+		try
 		{
-			$refs[$k] = &$params[$k];
+			$stmt = mysqli_prepare($connect, $sql);
+			$params = array_merge([$types], $values);
+			$refs = [];
+			foreach ($params as $k => $v) 
+			{
+				$refs[$k] = &$params[$k];
+			}
+			call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt], $refs));
+			$success=mysqli_stmt_execute($stmt);
+			mysqli_stmt_close($stmt);
+			return $success;
+		}	catch (Exception $e)
+		{
+			error_log($e);
+			return false;
 		}
-		call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt], $refs));
-		$success=mysqli_stmt_execute($stmt);
-		mysqli_stmt_close($stmt);
-		return $success;
 	}
 	function mysqli_ps_update($connect,$sql,$fields)
 	{
@@ -121,25 +124,30 @@
 			}
 		}
 		$sql = str_replace("#fields#",substr($fieldlist,0,strlen($fieldlist)-1),$sql);
-		
-		$stmt = mysqli_prepare($connect, $sql);
-		$params = array_merge([$types], $values);
-		$refs = [];
-		foreach ($params as $k => $v) 
+		try
 		{
-			$refs[$k] = &$params[$k];
+			$stmt = mysqli_prepare($connect, $sql);
+			$params = array_merge([$types], $values);
+			$refs = [];
+			foreach ($params as $k => $v) 
+			{
+				$refs[$k] = &$params[$k];
+			}
+			call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt], $refs));
+			$success=mysqli_stmt_execute($stmt);
+			mysqli_stmt_close($stmt);
+			return $success;
+		} catch(Exception $e)
+		{
+			error_log($e);
+			return false;
 		}
-		call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt], $refs));
-		$success=mysqli_stmt_execute($stmt);
-		mysqli_stmt_close($stmt);
-		return $success;
+		
 	}
 	
 	function mysqli_ps_select($connect,$sql)
 	{
-		// Requires mysqlnd
 		$types="";
-		ksort($fields);
 		preg_match_all('/\|\|(.+)\|\|/Ui',$sql, $wheres);
 		$sql=preg_replace('/\|\|.+\|\|/Ui', '?',$sql);
 		foreach($wheres[1] as $key=>$value)
@@ -161,17 +169,25 @@
 				$types.="s";
 			}
 		}
-		$stmt = mysqli_prepare($connect, $sql);
-		$params = array_merge([$types], $values);
-		$refs = [];
-		foreach ($params as $k => $v) 
+		try 
 		{
-			$refs[$k] = &$params[$k];
+			$stmt = mysqli_prepare($connect, $sql);
+			$params = array_merge([$types], $values);
+			$refs = [];
+			foreach ($params as $k => $v) 
+			{
+				$refs[$k] = &$params[$k];
+			}
+			call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt], $refs));
+			mysqli_stmt_execute($stmt);
+			$result=mysqli_stmt_get_result($stmt);
+			mysqli_stmt_close($stmt);
+			return $result;
 		}
-		call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt], $refs));
-		mysqli_stmt_execute($stmt);
-		$result=mysqli_stmt_get_result($stmt);
-		mysqli_stmt_close($stmt);
-		return $result;
-	}	
+		catch(Exception $e)
+		{
+			error_log($e);
+			return false;
+		}
+	}
 ?>
