@@ -5,8 +5,14 @@
 	function mysqli_ps_insert($connect,$sql,$fields,$ondup)
 	{
 		$types="";
+		if(is_array($fields))
+		{
 		ksort($fields);
+		}
+		if(is_array($ondup))
+		{
 		ksort($ondup);
+		}
 		foreach($fields as $key=>$value)
 		{
 			$values[]=$value;
