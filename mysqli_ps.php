@@ -147,6 +147,43 @@ function mysqli_ps_select($connect, $sql)
     return $result;
 }
 
+function mysqli_ps_delete($connect, $sql)
+{
+	$types = "";
+	$values = [];
+	
+	// Extract WHERE values inside ||...|| and replace with ?
+	preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
+	$sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
+		
+	if (!empty($wheres[1])) {
+		foreach ($wheres[1] as $value) {
+			$values[] = $value;
+			$types .= mysqli_determine_type($value);
+	    }
+    }
+		
+    $stmt = mysqli_prepare($connect, $sql);
+    if (!$stmt) {
+        error_log("Prepare failed (select): " . mysqli_error($connect));
+        return false;
+    }
+		
+    if (!mysqli_bind_params($stmt, $types, $values)) {
+        error_log("Bind param failed (select): " . mysqli_stmt_error($stmt));
+    	mysqli_stmt_close($stmt);
+    	return false;
+    }
+    if (!mysqli_stmt_execute($stmt)) {
+			error_log("Execute failed (select): " . mysqli_stmt_error($stmt));
+			mysqli_stmt_close($stmt);
+			return false;
+	}
+		
+	$success = mysqli_stmt_get_result($stmt);
+	mysqli_stmt_close($stmt);
+	return $success;
+}
 /* === Helper functions === */
 
 function mysqli_convert_empty_to_null(array $array): array
