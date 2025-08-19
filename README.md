@@ -6,7 +6,7 @@ These were created for a specific project where I have complete control of the q
 
 Please note that some parameters are expected (e.g. in $fields or WHERE). If your query has no parameters use  mysqli_query() instead.
 
-## mysqli_ps_deletet();
+## mysqli_ps_delete();
 ```
 mysqli_ps_update($mysqliconnection,$sql);
 ```
@@ -16,13 +16,12 @@ the mysqli connection object
 the $sql statement. In the "WHERE" surround parameterised values in double pipe characters e.g. WHERE ID=||5|| 
 
 ### returns 
-mysqli result object.
-(requires mysqlnd)
+true or false
 
 e.g. 
 ```
 $id=5;
-$result=mysqli_ps_select($connect,"delete from `table`  where `ID`=||" . $id . "||");
+$result=mysqli_ps_delete($connect,"delete from `table`  where `ID`=||" . $id . "||");
 ```
 
 
