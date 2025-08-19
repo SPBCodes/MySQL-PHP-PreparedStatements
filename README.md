@@ -1,10 +1,30 @@
 # MySQL-PHP-PreparedStatements
 
-Creating prepared statements is a pain in the proverbial - so I created (with a bit of help from ChatGPT) three quick and dirty procedural functions to make and execute Prepared Statements for MySQL/MariaDB with PHP.
+Creating prepared statements is a pain in the proverbial - so I created (with a bit of help from ChatGPT) some quick and dirty procedural functions to make and execute Prepared Statements for MySQL/MariaDB with PHP.
 
 These were created for a specific project where I have complete control of the queries needed - so may not be suitable for all use-cases.
 
 Please note that some parameters are expected (e.g. in $fields or WHERE). If your query has no parameters use  mysqli_query() instead.
+
+## mysqli_ps_deletet();
+```
+mysqli_ps_update($mysqliconnection,$sql);
+```
+### $mysqliconnection (OBJECT)
+the mysqli connection object
+### $sql (STRING)
+the $sql statement. In the "WHERE" surround parameterised values in double pipe characters e.g. WHERE ID=||5|| 
+
+### returns 
+mysqli result object.
+(requires mysqlnd)
+
+e.g. 
+```
+$id=5;
+$result=mysqli_ps_select($connect,"delete from `table`  where `ID`=||" . $id . "||");
+```
+
 
 ## mysqli_ps_insert();
 ```
