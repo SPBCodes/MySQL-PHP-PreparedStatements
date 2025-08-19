@@ -1,4 +1,4 @@
-<?
+<?php 
 function mysqli_ps_insert($connect, $sql, $fields, $ondup = null)
 {
     $fields = mysqli_convert_empty_to_null($fields);
@@ -19,17 +19,15 @@ function mysqli_ps_insert($connect, $sql, $fields, $ondup = null)
     foreach ($fields as $key => $value) {
         $values[] = $value;
         $types .= mysqli_determine_type($value);
-        $fieldlist .= "`" . $key . "`=?,";
+        $fieldlist .= "`$key`=?,";
     }
 
     foreach ($ondup as $key => $value) {
         if (array_key_exists($key, $fields)) {
-            // Use VALUES(col) if key is in fields (avoid duplicating value param)
-            $duplist .= "`" . $key . "`=VALUES(`" . $key . "`),";
+            $duplist .= "`$key`=VALUES(`$key`),";
         } else {
-            // If key not in fields, add param to values and type
             $values[] = $value;
-            $duplist .= "`" . $key . "`=?,";
+            $duplist .= "`$key`=?,";
             $types .= mysqli_determine_type($value);
         }
     }
@@ -65,7 +63,6 @@ function mysqli_ps_update($connect, $sql, $fields)
     $values = [];
     $fieldlist = "";
 
-    // Extract WHERE values inside ||...|| and replace with ?
     preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
     $sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
 
@@ -74,20 +71,19 @@ function mysqli_ps_update($connect, $sql, $fields)
         foreach ($fields as $key => $value) {
             $values[] = $value;
             $types .= mysqli_determine_type($value);
-            $fieldlist .= "`" . $key . "`=?,";
+            $fieldlist .= "`$key`=?,";
         }
         $fieldlist = rtrim($fieldlist, ",");
         $sql = str_replace("#fields#", $fieldlist, $sql);
     } else {
-        // No fields to update — just remove #fields# placeholder safely
         $sql = str_replace("#fields#", "", $sql);
     }
 
-    // Add WHERE clause values to values/types
     if (!empty($wheres[1])) {
-        foreach ($wheres[1] as $value) {
-            $values[] = $value;
-            $types .= mysqli_determine_type($value);
+        $processed = mysqli_process_where_values($wheres[1]);
+        foreach ($processed as $val) {
+            $values[] = $val;
+            $types .= mysqli_determine_type($val);
         }
     }
 
@@ -113,17 +109,18 @@ function mysqli_ps_select($connect, $sql)
     $types = "";
     $values = [];
 
-    // Extract WHERE values inside ||...|| and replace with ?
     preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
     $sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
 
     if (!empty($wheres[1])) {
-        foreach ($wheres[1] as $value) {
-            $values[] = $value;
-            $types .= mysqli_determine_type($value);
+        $processed = mysqli_process_where_values($wheres[1]);
+        foreach ($processed as $val) {
+            $values[] = $val;
+            $types .= mysqli_determine_type($val);
         }
     }
-
+error_log(print_r($values,true));
+error_log($sql);
     $stmt = mysqli_prepare($connect, $sql);
     if (!$stmt) {
         error_log("Prepare failed (select): " . mysqli_error($connect));
@@ -149,41 +146,37 @@ function mysqli_ps_select($connect, $sql)
 
 function mysqli_ps_delete($connect, $sql)
 {
-	$types = "";
-	$values = [];
-	
-	// Extract WHERE values inside ||...|| and replace with ?
-	preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
-	$sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
-		
-	if (!empty($wheres[1])) {
-		foreach ($wheres[1] as $value) {
-			$values[] = $value;
-			$types .= mysqli_determine_type($value);
-	    }
+    $types = "";
+    $values = [];
+
+    preg_match_all('/\|\|(.+?)\|\|/i', $sql, $wheres);
+    $sql = preg_replace('/\|\|.+?\|\|/i', '?', $sql);
+
+    if (!empty($wheres[1])) {
+        $processed = mysqli_process_where_values($wheres[1]);
+        foreach ($processed as $val) {
+            $values[] = $val;
+            $types .= mysqli_determine_type($val);
+        }
     }
-		
+
     $stmt = mysqli_prepare($connect, $sql);
     if (!$stmt) {
-        error_log("Prepare failed (select): " . mysqli_error($connect));
+        error_log("Prepare failed (delete): " . mysqli_error($connect));
         return false;
     }
-		
+
     if (!mysqli_bind_params($stmt, $types, $values)) {
-        error_log("Bind param failed (select): " . mysqli_stmt_error($stmt));
-    	mysqli_stmt_close($stmt);
-    	return false;
+        error_log("Bind param failed (delete): " . mysqli_stmt_error($stmt));
+        mysqli_stmt_close($stmt);
+        return false;
     }
-    if (!mysqli_stmt_execute($stmt)) {
-			error_log("Execute failed (select): " . mysqli_stmt_error($stmt));
-			mysqli_stmt_close($stmt);
-			return false;
-	}
-		
-	$success = mysqli_stmt_get_result($stmt);
-	mysqli_stmt_close($stmt);
-	return $success;
+
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    return $success;
 }
+
 /* === Helper functions === */
 
 function mysqli_convert_empty_to_null(array $array): array
@@ -199,38 +192,37 @@ function mysqli_convert_empty_to_null(array $array): array
 function mysqli_determine_type($value): string
 {
     if (is_null($value)) {
-        return 's'; // Bind NULL as string type (MySQLi accepts NULLs bound as 's')
+        return 's';
     }
 
-    // Accept numeric strings as numbers
     if (is_numeric($value)) {
-        if (strpos($value, '.') !== false) {
-            return 'd'; // float
-        }
-        return 'i'; // int
+        return strpos((string)$value, '.') !== false ? 'd' : 'i';
     }
 
-    return 's'; // default string
+    return 's';
 }
 
 function mysqli_bind_params(mysqli_stmt $stmt, string $types, array &$values): bool
 {
     if ($types === '' || empty($values)) {
-        // No params to bind
         return true;
     }
 
     $refs = [];
-    foreach ($values as $key => &$value) {
-        if (is_null($value)) {
-            $nullVar = null;
-            $refs[$key] = &$nullVar;
-        } else {
-            $refs[$key] = &$value;
-        }
+    foreach ($values as $k => &$v) {
+        $refs[$k] = &$values[$k];
     }
 
-    // Bind params with splat operator for references
-    return mysqli_stmt_bind_param($stmt, $types, ...$refs);
+    return call_user_func_array([$stmt, 'bind_param'], array_merge([$types], $refs));
+}
+
+function mysqli_process_where_values(array $wheres): array
+{
+    $processed = [];
+    foreach ($wheres as $value) {
+        // If user includes % in the placeholder, keep it
+        $processed[] = $value;
+    }
+    return $processed;
 }
 ?>
