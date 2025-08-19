@@ -1,5 +1,5 @@
 <?php 
-function mysqli_ps_insert($connect, $sql, $fields, $ondup = null)
+function mysqli_ps_insert($connect, $sql, $fields, $ondup = [])
 {
     $fields = mysqli_convert_empty_to_null($fields);
     $ondup = mysqli_convert_empty_to_null(is_array($ondup) ? $ondup : []);
@@ -55,7 +55,7 @@ function mysqli_ps_insert($connect, $sql, $fields, $ondup = null)
     return $success;
 }
 
-function mysqli_ps_update($connect, $sql, $fields)
+function mysqli_ps_update($connect, $sql, $fields=[])
 {
     $fields = mysqli_convert_empty_to_null($fields);
 
@@ -119,8 +119,6 @@ function mysqli_ps_select($connect, $sql)
             $types .= mysqli_determine_type($val);
         }
     }
-error_log(print_r($values,true));
-error_log($sql);
     $stmt = mysqli_prepare($connect, $sql);
     if (!$stmt) {
         error_log("Prepare failed (select): " . mysqli_error($connect));
