@@ -1,4 +1,4 @@
-<?php 
+<?php
 function mysqli_ps_insert($connect, $sql, $fields, $ondup = [])
 {
     $fields = mysqli_convert_empty_to_null($fields);
@@ -19,7 +19,7 @@ function mysqli_ps_insert($connect, $sql, $fields, $ondup = [])
     foreach ($fields as $key => $value) {
         $values[] = $value;
         $types .= mysqli_determine_type($value);
-        $fieldlist .= "`$key`=?,";
+        $fieldlist .= escape_identifier($key) . "=?,";
     }
 
     foreach ($ondup as $key => $value) {
@@ -27,7 +27,8 @@ function mysqli_ps_insert($connect, $sql, $fields, $ondup = [])
             $duplist .= "`$key`=VALUES(`$key`),";
         } else {
             $values[] = $value;
-            $duplist .= "`$key`=?,";
+            
+        $duplist .= escape_identifier($key) . "=?,";
             $types .= mysqli_determine_type($value);
         }
     }
@@ -71,7 +72,7 @@ function mysqli_ps_update($connect, $sql, $fields=[])
         foreach ($fields as $key => $value) {
             $values[] = $value;
             $types .= mysqli_determine_type($value);
-            $fieldlist .= "`$key`=?,";
+           $fieldlist .= escape_identifier($key) . "=?,";
         }
         $fieldlist = rtrim($fieldlist, ",");
         $sql = str_replace("#fields#", $fieldlist, $sql);
@@ -119,6 +120,8 @@ function mysqli_ps_select($connect, $sql)
             $types .= mysqli_determine_type($val);
         }
     }
+error_log(print_r($values,true));
+error_log($sql);
     $stmt = mysqli_prepare($connect, $sql);
     if (!$stmt) {
         error_log("Prepare failed (select): " . mysqli_error($connect));
@@ -222,5 +225,22 @@ function mysqli_process_where_values(array $wheres): array
         $processed[] = $value;
     }
     return $processed;
+}
+function escape_identifier($identifier) {
+    // Already backticked → trust user (do not double-escape)
+    if ($identifier[0] === '`' && substr($identifier, -1) === '`') {
+        return $identifier;
+    }
+
+    // Handle table.field
+    if (strpos($identifier, '.') !== false) {
+        [$table, $field] = explode('.', $identifier, 2);
+
+        return "`" . str_replace("`", "``", $table) . "`.`" .
+               str_replace("`", "``", $field) . "`";
+    }
+
+    // Normal field
+    return "`" . str_replace("`", "``", $identifier) . "`";
 }
 ?>
