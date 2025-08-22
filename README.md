@@ -16,10 +16,10 @@ Then in your PHP code:
 <?php
 require __DIR__ . '/vendor/autoload.php';
 
-use App\Database\PreparedDB;
+use App\Database\mysqlps;
 
 $mysqli = new mysqli("localhost", "user", "pass", "dbname");
-$db = new PreparedDB($mysqli);
+$db = new mysqlps($mysqli);
 ```
 
 ---
@@ -36,12 +36,12 @@ Include the class directly:
 
 ```php
 <?php
-require_once __DIR__ . '/MySQL-PHP-PreparedStatements/src/Database/PreparedDB.php';
+require_once __DIR__ . '/MySQL-PHP-PreparedStatements/src/Database/mysqlps.php';
 
-use App\Database\PreparedDB;
+use App\Database\mysqlps;
 
 $mysqli = new mysqli("localhost", "user", "pass", "dbname");
-$db = new PreparedDB($mysqli);
+$db = new mysqlps($mysqli);
 ```
 
 ---
@@ -87,7 +87,7 @@ $db->delete("DELETE FROM users WHERE id = ||1||");
 - `#fields#` and `#dupes#` are placeholders replaced by the class.  
 - `insert()`, `update()`, `delete()` → return `true` or `false`.  
 - `select()` → returns a `mysqli_result` object (or `false` on failure).  
-
+- enclosed parameters in WHERE statement in || (see examples above). 
 ---
 
 ## mysqli_ps.php contains procedural style versions of the functions in the class
