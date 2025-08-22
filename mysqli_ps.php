@@ -1,4 +1,4 @@
-<?php
+<?php 
 function mysqli_ps_insert($connect, $sql, $fields, $ondup = [])
 {
     $fields = mysqli_convert_empty_to_null($fields);
