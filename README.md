@@ -90,7 +90,13 @@ $db->delete("DELETE FROM users WHERE id = ||1||");
 
 ---
 
-## mysqli_ps.php contains has procedural functions
+## mysqli_ps.php contains procedural style versions of the functions in the class
+
+## AI Assistance
+
+Portions of this library were refactored and optimized with the assistance of an AI language model.  
+
+The original functions and overall design were created and directed by Steve Burgess. All copyright and licensing remains with the human author.
 
 ## License
 
