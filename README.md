@@ -90,6 +90,8 @@ $db->delete("DELETE FROM users WHERE id = ||1||");
 
 ---
 
+## mysqli_ps.php contains has procedural functions
+
 ## License
 
 MIT
