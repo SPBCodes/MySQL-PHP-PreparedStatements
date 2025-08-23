@@ -87,7 +87,7 @@ $db->delete("DELETE FROM users WHERE id = ||1||");
 - `#fields#` and `#dupes#` are placeholders replaced by the class.  
 - `insert()`, `update()`, `delete()` → return `true` or `false`.  
 - `select()` → returns a `mysqli_result` object (or `false` on failure).  
-- enclosed parameters in WHERE statement in || (see examples above). 
+- enclose parameters in WHERE statement in || (see examples above). 
 ---
 
 ## mysqli_ps.php contains procedural style versions of the functions in the class
